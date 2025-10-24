@@ -1,0 +1,21 @@
+[project]
+name = "mcp-template"
+version = "0.1.0"
+description = "A minimal template for low-level MCP servers written in Python"
+readme = "README.md"
+authors = [{ name = "Mark Music" }]
+
+keywords = []
+license = {}
+
+requires-python = ">=3.13"
+dependencies = [
+    "anyio>=4.10.0",
+    "click>=8.2.1",
+    "explorecourses>=1.0.6",
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.14.0",
+    "notion-client>=2.6.0",
+    "starlette>=0.47.3",
+    "uvicorn>=0.32.0",
+]
