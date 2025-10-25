@@ -3,7 +3,7 @@ import os
 from typing import Literal
 from notion_client import Client
 from auth import load_env_from_file
-from .utils import build_date_filter, retrieve_task_info
+from .utils import build_date_filter, retrieve_course_info, retrieve_project_info, retrieve_task_info
 
 def get_notion_client():
     # Try to read from environment first
@@ -16,18 +16,52 @@ def get_notion_client():
         raise RuntimeError("NOTION_AUTH_TOKEN is not set. Add it to your environment or .env")
     return Client(auth=token, log_level=logging.WARNING)
 
-def get_database_id() -> str:
-    database_id = os.environ.get("DATABASE_ID")
-    if not database_id:
+def get_databases() -> dict[str, str]:
+    """
+    Load and return all required Notion database IDs.
+    
+    Returns:
+        A dict with keys: 'tasks', 'projects', 'courses'
+        
+    Raises:
+        RuntimeError: If any required database ID is not set
+    """
+    # Try to read from environment first, then load .env if needed
+    task_db = os.environ.get("TASK_DATABASE")
+    project_db = os.environ.get("PROJECT_DATABASE")
+    course_db = os.environ.get("COURSE_DATABASE")
+    
+    if not task_db or not project_db or not course_db:
         load_env_from_file()
-        database_id = os.environ.get("DATABASE_ID")
-    if not database_id:
-        raise RuntimeError("DATABASE_ID is not set. Add it to your environment or .env")
-    return database_id
+        task_db = os.environ.get("TASK_DATABASE")
+        project_db = os.environ.get("PROJECT_DATABASE")
+        course_db = os.environ.get("COURSE_DATABASE")
+    
+    # Collect missing database IDs
+    missing = []
+    if not task_db:
+        missing.append("TASK_DATABASE")
+    if not project_db:
+        missing.append("PROJECT_DATABASE")
+    if not course_db:
+        missing.append("COURSE_DATABASE")
+    
+    if missing:
+        raise RuntimeError(
+            f"Missing required database IDs: {', '.join(missing)}. "
+            "Add them to your environment or .env file"
+        )
+    
+    return {
+        "tasks": task_db,
+        "projects": project_db,
+        "courses": course_db
+    }
 
 def get_tasks_data_source_id():
     client = get_notion_client()
-    database_id = get_database_id()
+    databases = get_databases()
+    database_id = databases["tasks"]
     
     try:
         dbs = client.databases.retrieve(database_id)
@@ -37,10 +71,40 @@ def get_tasks_data_source_id():
         return db["id"]
     except Exception as e:
         print(f"An error occurred while retrieving database information: {e}")
-        #  RAISE EXCEPTION
+        # raise TODO: handle this
+
+def get_projects_data_source_id():
+    client = get_notion_client()
+    databases = get_databases()
+    database_id = databases["projects"]
+    
+    try:
+        dbs = client.databases.retrieve(database_id)
+        
+        db = dbs["data_sources"][0]
+        
+        return db["id"]
+    except Exception as e:
+        print(f"An error occurred while retrieving database information: {e}")
+        # raise TODO: handle this
+
+def get_courses_data_source_id():
+    client = get_notion_client()
+    databases = get_databases()
+    database_id = databases["courses"]
+    
+    try:
+        dbs = client.databases.retrieve(database_id)
+        
+        db = dbs["data_sources"][0]
+        
+        return db["id"]
+    except Exception as e:
+        print(f"An error occurred while retrieving database information: {e}")
+        # raise TODO: handle this
 
 
-def get_tasks(time_range: Literal["today", "tomorrow", "week_from_today"]):
+def get_tasks(time_range: str):
     """
     Get tasks for the specified time range with "Not Started" status.
     
@@ -78,7 +142,38 @@ def get_tasks(time_range: Literal["today", "tomorrow", "week_from_today"]):
     
     return [retrieve_task_info(task) for task in list]
     
+def get_projects():
+    client = get_notion_client()
+    id = get_projects_data_source_id()
+    
+    res = client.data_sources.query(
+        id,
+        filter={
+            "property": "Status",
+            "status": {
+                "equals": "Active"
+            }
+        }
+    )
+    
+    return [retrieve_project_info(project) for project in res["results"]]
 
+def get_courses():
+    client = get_notion_client()
+    id = get_courses_data_source_id()
+    
+    res = client.data_sources.query(
+        id,
+        filter={
+            "property": "Status",
+            "status": {
+                "equals": "In progress"
+            }
+        }
+    )
+    
+    return [retrieve_course_info(course) for course in res["results"]]
+    
     
 
 
