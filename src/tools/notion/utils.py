@@ -1,6 +1,14 @@
 from datetime import datetime, timezone, timedelta
-from pydoc import describe
-from typing import Literal
+
+def get_priority_name(priority: int) -> str:
+    if priority == 1:
+        return "P1 ‼️"
+    elif priority == 2:
+        return "P2"
+    elif priority == 3:
+        return "P3"
+    else:
+        return "P1 ‼️"
 
 
 def build_date_filter(time_range: str) -> dict:
@@ -48,6 +56,15 @@ def build_date_filter(time_range: str) -> dict:
             }
         ]
     }
+    
+def check_if_projects_or_courses_exist(tasks: list[dict]):
+    for t in tasks:
+        if (t["project"] is not None):
+            return True
+        if (t["course"] is not None):
+            return True
+    
+    return False
 
 def retrieve_task_info(task: dict) -> dict:
     props = task["properties"]

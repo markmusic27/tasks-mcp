@@ -1,9 +1,18 @@
 import logging
 import os
-from typing import Literal
+from typing import Literal, TypedDict, Optional
 from notion_client import Client
 from auth import load_env_from_file
-from .utils import build_date_filter, retrieve_course_info, retrieve_project_info, retrieve_task_info
+from .utils import build_date_filter, check_if_projects_or_courses_exist, get_priority_name, retrieve_course_info, retrieve_project_info, retrieve_task_info
+
+class CreateTaskParams(TypedDict, total=False):
+    """Parameters for creating a task in Notion."""
+    title: str  # Required
+    due_date: str  # Required
+    priority: int  # Required
+    body: Optional[str]
+    project_id: Optional[str]
+    course_id: Optional[str]
 
 def get_notion_client():
     # Try to read from environment first
@@ -135,13 +144,26 @@ def get_tasks(time_range: str):
     
     res = client.data_sources.query(id, filter=filter_conditions)
     
-    list = res["results"]
-    
-    if len(list) == 0:
+    if len(res["results"]) == 0:
         return []
     
-    return [retrieve_task_info(task) for task in list]
+    tasks = [retrieve_task_info(task) for task in res["results"]]
     
+    # add project and course to tasks
+    if not check_if_projects_or_courses_exist(tasks):
+        return tasks
+    
+    projects = get_projects()
+    courses = get_courses()
+    
+    for task in tasks:
+        if task["project"] is not None:
+            task["project"] = next((p for p in projects if p["id"] == task["project"]), None)
+        if task["course"] is not None:
+            task["course"] = next((c for c in courses if c["id"] == task["course"]), None)
+    
+    return tasks
+
 def get_projects():
     client = get_notion_client()
     id = get_projects_data_source_id()
@@ -173,9 +195,79 @@ def get_courses():
     )
     
     return [retrieve_course_info(course) for course in res["results"]]
-    
-    
 
+def create_task(params: CreateTaskParams):
+    """
+    Create a task in Notion.
+    
+    Args:
+        params: Dictionary containing task parameters:
+    
+    Returns:
+        The created page response from Notion API
+    """
+    client = get_notion_client()
+    database_id = get_databases()["tasks"]
+    
+    # Extract parameters
+    title = params["title"]
+    due_date = params["due_date"]
+    priority = get_priority_name(params["priority"])
+    body = params.get("body")
+    project_id = params.get("project_id")
+    course_id = params.get("course_id")
+    
+    # Build properties for the page
+    properties = {
+        "Name": {
+            "title": [
+                {
+                    "text": {
+                        "content": title
+                    }
+                }
+            ]
+        },
+        "Priority": {
+            "select": {
+                "name": priority
+            }
+        },
+        "Due Date": {
+            "date": {
+                "start": due_date
+            }
+        }
+    }
+    
+    # Add project relation if provided
+    if project_id:
+        properties["Project"] = {
+            "relation": [{"id": project_id}]
+        }
+    
+    # Add course relation if provided
+    if course_id:
+        properties["Course"] = {
+            "relation": [{"id": course_id}]
+        }
+    
+    # Build the page object
+    page_data = {
+        "parent": {"database_id": database_id},
+        "icon": {
+            "type": "external",
+            "external": {
+                "url": "https://www.notion.so/icons/circle_gray.svg?mode=dark"
+            }
+        },
+        "properties": properties
+        
+    }
+    
+    res = client.pages.create(**page_data)
+    
+    return res
 
 def register_all() -> None:
     # register_tool(get_alerts_spec, get_alerts_handler)
