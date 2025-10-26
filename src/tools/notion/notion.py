@@ -363,23 +363,138 @@ async def get_tasks_handler(arguments: dict[str, Any], ctx: Any) -> list[types.C
         logger.exception("Failed to get tasks")
         raise RuntimeError(f"Failed to get tasks: {e}")
     
-    returned_string = "\nPending Tasks for Time Range: {time_range}:\n\n"
+    
+    
+    if len(tasks) == 0:
+        return [types.TextContent(type="text", text=f"There are no pending tasks in the specified time range of '{time_range}'.")]
+    
+    returned_string = f"\nPending Tasks for Time Range '{time_range}':\n\n"
     
     for i in range(len(tasks)):
         task =  tasks[i]
         pre = "\n" if i > 0 else ""
-        returned_string += pre + f"{task["title"]}\n- Due Date: {task["due_date"]}"
+        returned_string += pre + f"{task['title']}\n- Due Date: {task['due_date']}"
         if task["project"] is not None:
-            returned_string += f"\n- Associated Project: {task["project"]["title"]}"
+            returned_string += f"\n- Associated Project: {task['project']['title']}"
         if task["course"] is not None:
-            returned_string += f"\n- Associated Course: {task["course"]["title"]}"
+            returned_string += f"\n- Associated Course: {task['course']['title']}"
             
         returned_string += "\n"
             
     return [types.TextContent(type="text", text=returned_string)]
             
+            
+
+get_projects_spec = types.Tool(
+    name="get-projects",
+    description="Fetches active projects from my Notion (for creating tasks associated with projects)",
+    inputSchema={
+        "type": "object",
+        "properties": {}
+    }
+)
+
+async def get_projects_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
+    try:
+        projects = get_projects()
+    except Exception as e:
+        logger.exception("Failed to get projects")
+        raise RuntimeError(f"Failed to get projects: {e}")
     
+    returned_string = "\nActive Projects:\n\n"
+    if len(projects) == 0:
+        returned_string += "No active projects found."
+        return [types.TextContent(type="text", text=returned_string)]
+    
+    for i in range(len(projects)):
+        project = projects[i]
+        pre = "\n" if i > 0 else ""
+        returned_string += pre + f"{project['title']}\n- ID: {project['id']}\n"
+    
+    return [types.TextContent(type="text", text=returned_string)]
+
+
+get_courses_spec = types.Tool(
+    name="get-courses",
+    description="Fetches active courses from my Notion (for creating tasks associated with courses)",
+    inputSchema={
+        "type": "object",
+        "properties": {}
+    }
+)
+
+async def get_courses_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
+    try:
+        courses = get_courses()
+    except Exception as e:
+        logger.exception("Failed to get courses")
+        raise RuntimeError(f"Failed to get courses: {e}")
+    
+    returned_string = "\nActive Courses:\n\n"
+    if len(courses) == 0:
+        returned_string += "No active courses found."
+        return [types.TextContent(type="text", text=returned_string)]
+    
+    for i in range(len(courses)):
+        course = courses[i]
+        pre = "\n" if i > 0 else ""
+        returned_string += pre + f"{course['title']}\n- Description: {course['description']}\n- ID: {course['id']}\n"
+    
+    return [types.TextContent(type="text", text=returned_string)]
+
+
+create_task_spec = types.Tool(
+    name="create-task",
+    description="Creates a new task in my Notion Tasks database",
+    inputSchema={
+        "type": "object",
+        "required": ["title", "due_date", "priority"],
+        "properties": {
+            "title": {
+                "type": "string",
+                "description": "Task description (what needs to be done. Example: 'Complete the project report')"
+            },
+            "due_date": {
+                "type": "string",
+                "description": "Task due date in ISO format (YYYY-MM-DD). Example: '2025-10-25'"
+            },
+            "priority": {
+                "type": "integer",
+                "description": "Task priority: 1 (highest) .. 3 (lowest)",
+                "minimum": 1,
+                "maximum": 3
+            },
+            "project_id": {
+                "type": "string",
+                "description": "Optional related project page ID (fetch using the 'get-projects' tool)"
+            },
+            "course_id": {
+                "type": "string",
+                "description": "Optional related course page ID (fetch using the 'get-courses' tool)"
+            }
+        }
+    }
+)
+
+async def create_task_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
+    try:
+        params: CreateTaskParams = {
+            "title": arguments.get("title"),
+            "due_date": arguments.get("due_date"),
+            "priority": arguments.get("priority"),
+            "project_id": arguments.get("project_id"),
+            "course_id": arguments.get("course_id"),
+        }
+        url = create_task(params)
+    except Exception as e:
+        logger.exception("Failed to create task")
+        raise RuntimeError(f"Failed to create task: {e}")
+    
+    returned_string = f"Task created: {url}"
+    return [types.TextContent(type="text", text=returned_string)]
 
 def register_all() -> None:
     register_tool(get_tasks_spec, get_tasks_handler)
-    pass
+    register_tool(get_projects_spec, get_projects_handler)
+    register_tool(get_courses_spec, get_courses_handler)
+    register_tool(create_task_spec, create_task_handler)
