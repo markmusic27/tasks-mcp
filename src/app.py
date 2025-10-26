@@ -126,7 +126,7 @@ def main(port: int, log_level: str, debug: bool):
     
     uvicorn.run(
         starlette_app,
-        host="localhost",
+        host="0.0.0.0",
         port=port,
         log_level=log_level.lower(),
         reload=debug,

@@ -26,7 +26,7 @@ COPY src/ ./src/
 COPY .env* ./
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8000
 
 # Run the application
 CMD ["uv", "run", "src"]
