@@ -2,8 +2,8 @@ import { showHUD, Clipboard, LaunchProps } from "@raycast/api";
 import fetch from "node-fetch";
 import { Endpoint, SecretKey } from "./secret";
 
-interface CaptureProps {
-  content: string;
+interface MessageProps {
+  message: string;
 }
 
 interface ResponseData {
@@ -12,7 +12,7 @@ interface ResponseData {
   id?: string;
 }
 
-export default async function main(props: LaunchProps<{ arguments: CaptureProps }>) {
+export default async function main(props: LaunchProps<{ arguments: MessageProps }>) {
   const requestOptions = {
     method: "POST",
     headers: {
@@ -20,7 +20,9 @@ export default async function main(props: LaunchProps<{ arguments: CaptureProps 
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      message: props.arguments.content,
+      message:
+        "Add this task using Tasks MCP. Then send a confirmation that the task was added. Task: " +
+        props.arguments.message,
     }),
   };
 
@@ -34,7 +36,7 @@ export default async function main(props: LaunchProps<{ arguments: CaptureProps 
       const logged = responseData.id != null && responseData.id != "";
 
       if (logged && responseData.message == null) {
-        await showHUD("✅ Sent");
+        await showHUD("Message sent");
 
         return;
       }

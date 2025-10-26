@@ -18,7 +18,15 @@
       "name": "poke",
       "title": "Poke",
       "description": "Message Poke through Raycast",
-      "mode": "no-view"
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "message",
+          "placeholder": "Your message",
+          "type": "text",
+          "required": true
+        }
+      ]
     }
   ],
   "dependencies": {
