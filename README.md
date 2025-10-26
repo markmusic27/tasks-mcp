@@ -1,6 +1,6 @@
 <p align="center">
   <a href="#">
-    <img width="130" height="130" src="https://i.ibb.co/gDCGg1c/Frame-22.png" alt="Logo">
+    <img width="130" height="130" src="https://github.com/markmusic27/tasks-mcp/blob/main/demo/logo.png?raw=true" alt="Logo">
   </a>
   <h1 align="center"><b>tasks-mcp</b></h1>
   <p align="center">
